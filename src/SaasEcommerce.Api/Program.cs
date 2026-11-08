@@ -10,7 +10,9 @@ using SaasEcommerce.Core.Interfaces;
 using SaasEcommerce.Infrastructure.Persistence;
 using SaasEcommerce.Infrastructure.Persistence.Interceptors;
 using SaasEcommerce.Infrastructure.Security;
+using SaasEcommerce.Infrastructure.Storage;
 using SaasEcommerce.Infrastructure.Tenancy;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,12 +29,17 @@ builder.Services.AddScoped<ITenantContext, TenantContext>();
 builder.Services.AddScoped<TenantSaveChangesInterceptor>();
 builder.Services.AddScoped<RlsConnectionInterceptor>();
 builder.Services.AddSingleton<ITokenGenerator, TokenGenerator>();
+builder.Services.AddSingleton<IMediaStorageService, CloudflareR2StorageService>();
 
-// 3. Read/Write Decoupled Database Registration (Connects via PgBouncer on Port 6432)
+// 3. Npgsql DataSource with Dynamic JSON Enabled (Npgsql 8.0+)
+var connectionString = builder.Configuration.GetConnectionString("MasterConnection");
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+dataSourceBuilder.EnableDynamicJson();
+var dataSource = dataSourceBuilder.Build();
+
 builder.Services.AddDbContext<AppDbContext>((sp, options) =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("MasterConnection");
-    options.UseNpgsql(connectionString, npgsql =>
+    options.UseNpgsql(dataSource, npgsql =>
     {
         npgsql.EnableRetryOnFailure(3);
     })
