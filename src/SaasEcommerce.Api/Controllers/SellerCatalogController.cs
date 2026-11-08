@@ -44,6 +44,8 @@ public record CreateProductRequest(
     decimal GstPercentage,
     List<string> BulletPoints,
     List<string> SeoKeywords,
+    List<QuantityDiscountTier>? QuantityDiscounts,
+    string? APlusContentJson,
     bool HasVariants,
     List<CreateVariantDto> Variants,
     List<CreateMediaDto> MediaGallery);
@@ -51,6 +53,15 @@ public record CreateProductRequest(
 public record UpdateStockRequest(int StockQty, int BufferStockQty, int LowStockAlertThreshold);
 public record ToggleHolidayModeRequest(bool IsHolidayMode, int ExtraDeliveryDays);
 public record PresignedUploadRequest(string FileName, string ContentType);
+
+public record UpdateStorefrontThemeRequest(
+    string PrimaryColor,
+    string SecondaryColor,
+    string FontFamily,
+    string BorderRadius,
+    string? LogoUrl,
+    string? FaviconUrl,
+    string LayoutConfigJson);
 
 [ApiController]
 [Route("api/v1/seller")]
@@ -96,6 +107,8 @@ public sealed class SellerCatalogController : ControllerBase
         _db.Categories.Add(category);
         await _db.SaveChangesAsync(ct);
 
+        await _cache.RemoveAsync($"tenant:{_tenantContext.TenantId}:categories", ct);
+
         return CreatedAtAction(nameof(CreateCategory), new { category.Id, category.Name, category.Slug });
     }
 
@@ -108,7 +121,7 @@ public sealed class SellerCatalogController : ControllerBase
         return Ok(result);
     }
 
-    // 3. Create Product with Variants, Media & Auto Quality Score (FRD 3.1 & 3.2)
+    // 3. Create Product with Variants, Media, Quantity Discounts & Auto Quality Score (FRD 3.1, 3.2, 3.3)
     [HttpPost("products")]
     public async Task<IActionResult> CreateProduct([FromBody] CreateProductRequest req, CancellationToken ct)
     {
@@ -138,6 +151,8 @@ public sealed class SellerCatalogController : ControllerBase
             GstPercentage = req.GstPercentage,
             BulletPoints = req.BulletPoints ?? new(),
             SeoKeywords = req.SeoKeywords ?? new(),
+            QuantityDiscounts = req.QuantityDiscounts ?? new(),
+            APlusContentJson = string.IsNullOrWhiteSpace(req.APlusContentJson) ? "[]" : req.APlusContentJson,
             HasVariants = req.HasVariants,
             Status = ProductStatus.Active
         };
@@ -177,7 +192,6 @@ public sealed class SellerCatalogController : ControllerBase
             }
         }
 
-        // Calculate Real-Time Completeness Score (FRD 3.1)
         product.QualityScore = CatalogQualityCalculator.CalculateScore(product);
 
         _db.Products.Add(product);
@@ -232,14 +246,17 @@ public sealed class SellerCatalogController : ControllerBase
         return Ok(products);
     }
 
-    // 5. Real-Time SKU Stock & Buffer Update (FRD 3.4)
+    // 5. Real-Time SKU Stock & Buffer Update + Instant PDP Cache Purge (FRD 3.4 & Arch 4.2)
     [HttpPatch("inventory/{variantId:guid}")]
     public async Task<IActionResult> UpdateVariantStock(
         Guid variantId,
         [FromBody] UpdateStockRequest req,
         CancellationToken ct)
     {
-        var variant = await _db.ProductVariants.FirstOrDefaultAsync(v => v.Id == variantId, ct);
+        var variant = await _db.ProductVariants
+            .Include(v => v.Product)
+            .FirstOrDefaultAsync(v => v.Id == variantId, ct);
+
         if (variant is null) return NotFound(new { error = "Variant SKU not found in your store." });
 
         variant.StockQty = Math.Max(0, req.StockQty);
@@ -247,6 +264,12 @@ public sealed class SellerCatalogController : ControllerBase
         variant.LowStockAlertThreshold = Math.Max(0, req.LowStockAlertThreshold);
 
         await _db.SaveChangesAsync(ct);
+
+        // Immediately purge cached Product Detail Page in Redis (Arch 4.2)
+        if (variant.Product is not null)
+        {
+            await _cache.RemoveAsync($"tenant:{_tenantContext.TenantId}:pdp:{variant.Product.Slug}", ct);
+        }
 
         return Ok(new
         {
@@ -274,7 +297,6 @@ public sealed class SellerCatalogController : ControllerBase
 
         await _db.SaveChangesAsync(ct);
 
-        // Immediately invalidate Redis cache for both subdomain and custom domain (Arch 4.2)
         await _cache.RemoveAsync($"tenant:slug:{tenant.Subdomain}", ct);
         if (!string.IsNullOrEmpty(tenant.CustomDomain))
         {
@@ -293,11 +315,40 @@ public sealed class SellerCatalogController : ControllerBase
         });
     }
 
-    private static string GenerateSlug(string phrase)
+    // 7. Update Custom Storefront Theme & Modular Homepage Sections (Tier 1 & Tier 2 Custom UI)
+    [HttpPut("store/theme")]
+    public async Task<IActionResult> UpdateStorefrontTheme(
+        [FromBody] UpdateStorefrontThemeRequest req,
+        CancellationToken ct)
+    {
+        var theme = await _db.StorefrontThemes.FirstOrDefaultAsync(ct);
+        if (theme is null)
+        {
+            theme = new StorefrontTheme { TenantId = _tenantContext.TenantId!.Value };
+            _db.StorefrontThemes.Add(theme);
+        }
+
+        theme.PrimaryColor = req.PrimaryColor;
+        theme.SecondaryColor = req.SecondaryColor;
+        theme.FontFamily = req.FontFamily;
+        theme.BorderRadius = req.BorderRadius;
+        theme.LogoUrl = req.LogoUrl;
+        theme.FaviconUrl = req.FaviconUrl;
+        theme.LayoutConfigJson = string.IsNullOrWhiteSpace(req.LayoutConfigJson) ? "{}" : req.LayoutConfigJson;
+
+        await _db.SaveChangesAsync(ct);
+
+        await _cache.RemoveAsync($"tenant:{_tenantContext.TenantId}:bootstrap", ct);
+
+        return Ok(new { message = "Storefront theme and modular layout updated.", theme });
+    }
+
+private static string GenerateSlug(string phrase)
     {
         string str = phrase.ToLowerInvariant().Trim();
         str = Regex.Replace(str, @"[^a-z0-9\s-]", "");
-        str = Regex.Replace(str, @"\s+", "-").Trim('-');
+        str = Regex.Replace(str, @"\s+", "-");
+        str = Regex.Replace(str, @"-+", "-").Trim('-'); // Collapses multiple dashes into one
         return str;
     }
 

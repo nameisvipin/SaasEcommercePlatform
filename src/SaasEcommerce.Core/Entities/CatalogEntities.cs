@@ -22,6 +22,7 @@ public class Category : TenantScopedEntity
     public Category? ParentCategory { get; set; }
     public ICollection<Category> SubCategories { get; set; } = new List<Category>();
 }
+public record QuantityDiscountTier(int MinQuantity, decimal DiscountPercentage, string Label);
 
 public class Product : TenantScopedEntity
 {
@@ -44,6 +45,15 @@ public class Product : TenantScopedEntity
     /// JSONB storing Enhanced Brand Content / Basic A+ modules below the fold (FRD 3.2)
     /// </summary>
     public string APlusContentJson { get; set; } = "[]";
+
+    /// <summary>
+    /// Tiered quantity discounts (FRD 2.4 & 3.3) e.g. Buy 2 Get 5% Off
+    /// </summary>
+    public List<QuantityDiscountTier> QuantityDiscounts { get; set; } = new();
+
+    // Aggregated Rating Metrics for fast catalog filtering (FRD 2.4 & 2.7)
+    public decimal AverageRating { get; set; } = 0.0m;
+    public int ReviewCount { get; set; } = 0;
 
     public bool HasVariants { get; set; } = false;
     public ProductStatus Status { get; set; } = ProductStatus.Active;

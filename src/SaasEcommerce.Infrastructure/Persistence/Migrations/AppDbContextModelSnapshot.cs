@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using SaasEcommerce.Core.Entities;
 using SaasEcommerce.Infrastructure.Persistence;
 
 #nullable disable
@@ -133,6 +134,10 @@ namespace SaasEcommerce.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb");
 
+                    b.Property<decimal>("AverageRating")
+                        .HasPrecision(3, 2)
+                        .HasColumnType("numeric(3,2)");
+
                     b.Property<string>("BrandName")
                         .HasColumnType("text");
 
@@ -164,7 +169,14 @@ namespace SaasEcommerce.Infrastructure.Persistence.Migrations
                     b.Property<int>("QualityScore")
                         .HasColumnType("integer");
 
+                    b.Property<List<QuantityDiscountTier>>("QuantityDiscounts")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
                     b.Property<int>("ReplacementDays")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ReviewCount")
                         .HasColumnType("integer");
 
                     b.Property<string>("RichDescriptionHtml")

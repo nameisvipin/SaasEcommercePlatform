@@ -93,6 +93,11 @@ public sealed class AppDbContext : DbContext
             b.Property(x => x.BulletPoints).HasColumnType("jsonb");
             b.Property(x => x.SeoKeywords).HasColumnType("jsonb");
             b.Property(x => x.APlusContentJson).HasColumnType("jsonb");
+            // b.Property(x => x.QuantityDiscounts).HasColumnType("jsonb");
+            b.Property(x => x.QuantityDiscounts)
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[]'::jsonb");
+            b.Property(x => x.AverageRating).HasPrecision(3, 2);
 
             b.HasOne(x => x.Category)
              .WithMany()
