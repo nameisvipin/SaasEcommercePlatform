@@ -26,6 +26,7 @@ builder.Services.AddSingleton<ITenantSecretProtector, TenantSecretProtector>();
 builder.Services.AddScoped<ITenantContext, TenantContext>();
 builder.Services.AddScoped<TenantSaveChangesInterceptor>();
 builder.Services.AddScoped<RlsConnectionInterceptor>();
+builder.Services.AddSingleton<ITokenGenerator, TokenGenerator>();
 
 // 3. Read/Write Decoupled Database Registration (Connects via PgBouncer on Port 6432)
 builder.Services.AddDbContext<AppDbContext>((sp, options) =>
