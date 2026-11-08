@@ -1,0 +1,6 @@
+@SaasEcommerce.Api_HostAddress = http://localhost:5075
+
+GET {{SaasEcommerce.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

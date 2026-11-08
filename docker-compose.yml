@@ -1,0 +1,79 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: saas_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-saas_master}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ChangeMe_ProdSecret_2026!}
+      POSTGRES_DB: ${DB_NAME:-saas_ecommerce_db}
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=512MB
+      -c effective_cache_size=1536MB
+      -c work_mem=16MB
+      -c maintenance_work_mem=128MB
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./docker/init-rls.sql:/docker-entrypoint-initdb.d/init-rls.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - saas_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-saas_master} -d ${DB_NAME:-saas_ecommerce_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: saas_pgbouncer
+    restart: unless-stopped
+    environment:
+      DB_USER: ${DB_USER:-saas_master}
+      DB_PASSWORD: ${DB_PASSWORD:-ChangeMe_ProdSecret_2026!}
+      DB_HOST: postgres
+      DB_NAME: ${DB_NAME:-saas_ecommerce_db}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 5000
+      DEFAULT_POOL_SIZE: 50
+      MIN_POOL_SIZE: 10
+      RESERVE_POOL_SIZE: 10
+      AUTH_TYPE: scram-sha-256
+      IGNORE_STARTUP_PARAMETERS: extra_float_digits,options
+    ports:
+      - "6432:5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - saas_net
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: saas_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-ChangeMe_RedisSecret_2026!}
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - saas_net
+
+volumes:
+  pg_data:
+  redis_data:
+
+networks:
+  saas_net:
+    driver: bridge

@@ -1,0 +1,41 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{E5B90CC3-7DBA-4E6F-A904-DF88F0D73486}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SaasEcommerce.Core", "src\SaasEcommerce.Core\SaasEcommerce.Core.csproj", "{32D6CEEE-E501-46CF-9AA7-590CF3711F2D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SaasEcommerce.Infrastructure", "src\SaasEcommerce.Infrastructure\SaasEcommerce.Infrastructure.csproj", "{3CA44719-514F-49DC-AEED-F4C0EBB20217}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SaasEcommerce.Api", "src\SaasEcommerce.Api\SaasEcommerce.Api.csproj", "{985F7667-8E04-41EF-92DE-9CC7E9D24043}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{32D6CEEE-E501-46CF-9AA7-590CF3711F2D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{32D6CEEE-E501-46CF-9AA7-590CF3711F2D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{32D6CEEE-E501-46CF-9AA7-590CF3711F2D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{32D6CEEE-E501-46CF-9AA7-590CF3711F2D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3CA44719-514F-49DC-AEED-F4C0EBB20217}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3CA44719-514F-49DC-AEED-F4C0EBB20217}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3CA44719-514F-49DC-AEED-F4C0EBB20217}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3CA44719-514F-49DC-AEED-F4C0EBB20217}.Release|Any CPU.Build.0 = Release|Any CPU
+		{985F7667-8E04-41EF-92DE-9CC7E9D24043}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{985F7667-8E04-41EF-92DE-9CC7E9D24043}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{985F7667-8E04-41EF-92DE-9CC7E9D24043}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{985F7667-8E04-41EF-92DE-9CC7E9D24043}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{32D6CEEE-E501-46CF-9AA7-590CF3711F2D} = {E5B90CC3-7DBA-4E6F-A904-DF88F0D73486}
+		{3CA44719-514F-49DC-AEED-F4C0EBB20217} = {E5B90CC3-7DBA-4E6F-A904-DF88F0D73486}
+		{985F7667-8E04-41EF-92DE-9CC7E9D24043} = {E5B90CC3-7DBA-4E6F-A904-DF88F0D73486}
+	EndGlobalSection
+EndGlobal
