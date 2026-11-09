@@ -31,6 +31,13 @@ public sealed class AppDbContext : DbContext
     public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
     public DbSet<ProductMedia> ProductMedia => Set<ProductMedia>();
 
+    // Phase 3 Buyer, Cart, Promo & Order Tables
+    public DbSet<BuyerAddress> BuyerAddresses => Set<BuyerAddress>();
+    public DbSet<CartItem> CartItems => Set<CartItem>();
+    public DbSet<Coupon> Coupons => Set<Coupon>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -132,6 +139,67 @@ public sealed class AppDbContext : DbContext
              .WithMany(p => p.MediaGallery)
              .HasForeignKey(x => x.ProductId)
              .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 7a. BuyerAddress Table
+        modelBuilder.Entity<BuyerAddress>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.TenantId, x.UserId });
+            b.Property(x => x.PinCode).HasMaxLength(10).IsRequired();
+            b.Property(x => x.StateCode).HasMaxLength(5).IsRequired();
+        });
+
+        // 7b. CartItem Table
+        modelBuilder.Entity<CartItem>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.TenantId, x.UserId, x.ProductVariantId }).IsUnique();
+            b.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.ProductVariant).WithMany().HasForeignKey(x => x.ProductVariantId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 7c. Coupon Table
+        modelBuilder.Entity<Coupon>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.TenantId, x.Code }).IsUnique();
+            b.Property(x => x.Code).HasMaxLength(40).IsRequired();
+            b.Property(x => x.DiscountValue).HasPrecision(12, 2);
+            b.Property(x => x.MinOrderAmount).HasPrecision(12, 2);
+            b.Property(x => x.MaxDiscountCap).HasPrecision(12, 2);
+        });
+
+        // 7d. Order & OrderItem Tables
+        modelBuilder.Entity<Order>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.TenantId, x.OrderNumber }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.BuyerId });
+            b.Property(x => x.OrderNumber).HasMaxLength(50).IsRequired();
+            b.Property(x => x.InvoiceNumber).HasMaxLength(50).IsRequired();
+            b.Property(x => x.SubTotalTaxable).HasPrecision(12, 2);
+            b.Property(x => x.TotalCgst).HasPrecision(12, 2);
+            b.Property(x => x.TotalSgst).HasPrecision(12, 2);
+            b.Property(x => x.TotalIgst).HasPrecision(12, 2);
+            b.Property(x => x.TotalGst).HasPrecision(12, 2);
+            b.Property(x => x.DiscountAmount).HasPrecision(12, 2);
+            b.Property(x => x.ShippingCharge).HasPrecision(12, 2);
+            b.Property(x => x.GrandTotal).HasPrecision(12, 2);
+        });
+
+        modelBuilder.Entity<OrderItem>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.TenantId, x.OrderId });
+            b.Property(x => x.UnitPriceInclusive).HasPrecision(12, 2);
+            b.Property(x => x.TaxableAmount).HasPrecision(12, 2);
+            b.Property(x => x.GstPercentage).HasPrecision(5, 2);
+            b.Property(x => x.CgstAmount).HasPrecision(12, 2);
+            b.Property(x => x.SgstAmount).HasPrecision(12, 2);
+            b.Property(x => x.IgstAmount).HasPrecision(12, 2);
+            b.Property(x => x.LineTotal).HasPrecision(12, 2);
+            b.HasOne(x => x.Order).WithMany(o => o.Items).HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Cascade);
         });
 
         // 8. Automatically apply Global Query Filter to all ITenantScoped entities

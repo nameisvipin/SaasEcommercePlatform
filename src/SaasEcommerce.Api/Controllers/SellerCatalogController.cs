@@ -343,7 +343,44 @@ public sealed class SellerCatalogController : ControllerBase
         return Ok(new { message = "Storefront theme and modular layout updated.", theme });
     }
 
-private static string GenerateSlug(string phrase)
+    public record CreateCouponRequest(
+        string Code,
+        string? Description,
+        DiscountType DiscountType,
+        decimal DiscountValue,
+        decimal MinOrderAmount,
+        decimal? MaxDiscountCap,
+        int DaysValid = 30,
+        int? UsageLimitTotal = null);
+
+    // 8. Create Store Promo Coupon (FRD 2.5 & 3.3)
+    [HttpPost("coupons")]
+    public async Task<IActionResult> CreateCoupon([FromBody] CreateCouponRequest req, CancellationToken ct)
+    {
+        var code = req.Code.Trim().ToUpperInvariant();
+        if (await _db.Coupons.AnyAsync(c => c.Code == code, ct))
+            return Conflict(new { error = $"Coupon code '{code}' already exists." });
+
+        var coupon = new Coupon
+        {
+            Code = code,
+            Description = req.Description,
+            DiscountType = req.DiscountType,
+            DiscountValue = req.DiscountValue,
+            MinOrderAmount = req.MinOrderAmount,
+            MaxDiscountCap = req.MaxDiscountCap,
+            ExpiresAt = DateTimeOffset.UtcNow.AddDays(req.DaysValid),
+            UsageLimitTotal = req.UsageLimitTotal,
+            IsActive = true
+        };
+
+        _db.Coupons.Add(coupon);
+        await _db.SaveChangesAsync(ct);
+
+        return CreatedAtAction(nameof(CreateCoupon), coupon);
+    }
+
+    private static string GenerateSlug(string phrase)
     {
         string str = phrase.ToLowerInvariant().Trim();
         str = Regex.Replace(str, @"[^a-z0-9\s-]", "");

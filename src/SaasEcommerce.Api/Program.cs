@@ -13,6 +13,7 @@ using SaasEcommerce.Infrastructure.Security;
 using SaasEcommerce.Infrastructure.Storage;
 using SaasEcommerce.Infrastructure.Tenancy;
 using Npgsql;
+using SaasEcommerce.Infrastructure.Invoices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +31,7 @@ builder.Services.AddScoped<TenantSaveChangesInterceptor>();
 builder.Services.AddScoped<RlsConnectionInterceptor>();
 builder.Services.AddSingleton<ITokenGenerator, TokenGenerator>();
 builder.Services.AddSingleton<IMediaStorageService, CloudflareR2StorageService>();
+builder.Services.AddSingleton<IInvoicePdfService, QuestPdfInvoiceService>();
 
 // 3. Npgsql DataSource with Dynamic JSON Enabled (Npgsql 8.0+)
 var connectionString = builder.Configuration.GetConnectionString("MasterConnection");
@@ -79,6 +81,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             OnTokenValidated = async context =>
             {
                 var tenantContext = context.HttpContext.RequestServices.GetRequiredService<ITenantContext>();
+                var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
                 var principal = context.Principal;
 
                 if (principal is null)
@@ -89,19 +92,33 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
                 var roleClaim = principal.FindFirstValue(ClaimTypes.Role);
                 var tokenTenantClaim = principal.FindFirstValue("tenant_id");
+                var userIdClaim = principal.FindFirstValue(ClaimTypes.NameIdentifier);
+                var stampClaim = principal.FindFirstValue("security_stamp");
 
-                // SuperAdmin can access SuperAdmin routes
-                if (roleClaim == nameof(UserRole.PlatformSuperAdmin))
+                if (roleClaim != nameof(UserRole.PlatformSuperAdmin))
                 {
-                    return;
+                    if (tenantContext.TenantId is null ||
+                        !Guid.TryParse(tokenTenantClaim, out var tokenTenantId) ||
+                        tokenTenantId != tenantContext.TenantId.Value)
+                    {
+                        context.Fail("Security Violation: Token tenant_id does not match current storefront domain.");
+                        return;
+                    }
                 }
 
-                // For Seller and Buyer tokens, strictly enforce TenantId match against the domain!
-                if (tenantContext.TenantId is null ||
-                    !Guid.TryParse(tokenTenantClaim, out var tokenTenantId) ||
-                    tokenTenantId != tenantContext.TenantId.Value)
+                // Verify user is active and SecurityStampVersion matches (FRD 2.1 Force Logout All Devices)
+                if (Guid.TryParse(userIdClaim, out var userId))
                 {
-                    context.Fail("Security Violation: Token tenant_id does not match current storefront domain.");
+                    var userStamp = await db.Users
+                        .AsNoTracking()
+                        .Where(u => u.Id == userId && u.IsActive)
+                        .Select(u => (int?)u.SecurityStampVersion)
+                        .FirstOrDefaultAsync(context.HttpContext.RequestAborted);
+
+                    if (userStamp is null || userStamp.Value.ToString() != stampClaim)
+                    {
+                        context.Fail("Session has been revoked or user logged out of all devices.");
+                    }
                 }
             }
         };
