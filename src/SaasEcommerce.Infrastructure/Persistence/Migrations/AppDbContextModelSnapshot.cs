@@ -650,6 +650,79 @@ namespace SaasEcommerce.Infrastructure.Persistence.Migrations
                     b.ToTable("ProductMedia");
                 });
 
+            modelBuilder.Entity("SaasEcommerce.Core.Entities.ProductReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BuyerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BuyerName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Comment")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsApproved")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsVerifiedPurchase")
+                        .HasColumnType("boolean");
+
+                    b.Property<List<string>>("MediaUrls")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[]'::jsonb");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("SellerRepliedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SellerReply")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "ProductId", "BuyerId")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "ProductId", "IsApproved");
+
+                    b.ToTable("ProductReviews");
+                });
+
             modelBuilder.Entity("SaasEcommerce.Core.Entities.ProductVariant", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1055,6 +1128,17 @@ namespace SaasEcommerce.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("SaasEcommerce.Core.Entities.Product", "Product")
                         .WithMany("MediaGallery")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("SaasEcommerce.Core.Entities.ProductReview", b =>
+                {
+                    b.HasOne("SaasEcommerce.Core.Entities.Product", "Product")
+                        .WithMany()
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

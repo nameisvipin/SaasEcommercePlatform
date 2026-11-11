@@ -40,6 +40,8 @@ public sealed class AppDbContext : DbContext
     // Phase 4 Logistics, Shipments & RTO Tables
     public DbSet<Shipment> Shipments => Set<Shipment>();
     public DbSet<RtoDisputeClaim> RtoDisputeClaims => Set<RtoDisputeClaim>();
+    // Phase 5 Customer Reviews Table
+    public DbSet<ProductReview> ProductReviews => Set<ProductReview>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -235,6 +237,24 @@ public sealed class AppDbContext : DbContext
             b.Property(x => x.ProofMediaUrls)
              .HasColumnType("jsonb")
              .HasDefaultValueSql("'[]'::jsonb");
+        });
+
+        // 7g. ProductReview Table
+        modelBuilder.Entity<ProductReview>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.TenantId, x.ProductId, x.IsApproved });
+            b.HasIndex(x => new { x.TenantId, x.ProductId, x.BuyerId }).IsUnique(); // 1 review per product per buyer
+            b.Property(x => x.Title).HasMaxLength(150).IsRequired();
+            b.Property(x => x.Comment).HasMaxLength(2000).IsRequired();
+            b.Property(x => x.MediaUrls)
+             .HasColumnType("jsonb")
+             .HasDefaultValueSql("'[]'::jsonb");
+
+            b.HasOne(x => x.Product)
+             .WithMany()
+             .HasForeignKey(x => x.ProductId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         // 8. Automatically apply Global Query Filter to all ITenantScoped entities
