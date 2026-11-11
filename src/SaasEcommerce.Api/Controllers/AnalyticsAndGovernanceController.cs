@@ -109,6 +109,7 @@ public sealed class AnalyticsAndGovernanceController : ControllerBase
 
     // 2. Super-Admin Platform-Wide SaaS Overview (All Tenants)
     [HttpGet("api/v1/superadmin/analytics/overview")]
+    [Authorize(Policy = "SuperAdminOnly")]
     public async Task<IActionResult> GetPlatformOverview(CancellationToken ct)
     {
         var totalTenants = await _db.Tenants.CountAsync(ct);
@@ -148,6 +149,7 @@ public sealed class AnalyticsAndGovernanceController : ControllerBase
 
     // 3. Super-Admin: Assign "Assured Quality" Badge or Suppress Product Listing
     [HttpPatch("api/v1/superadmin/tenants/{tenantId:guid}/products/{productId:guid}/trust-badge")]
+    [Authorize(Policy = "SuperAdminOnly")]
     public async Task<IActionResult> ModerateProductAndAssignBadge(
         Guid tenantId,
         Guid productId,
@@ -181,6 +183,7 @@ public sealed class AnalyticsAndGovernanceController : ControllerBase
 
     // 4. Super-Admin: Suspend or Reactivate a Client Storefront
     [HttpPatch("api/v1/superadmin/tenants/{tenantId:guid}/status")]
+    [Authorize(Policy = "SuperAdminOnly")]
     public async Task<IActionResult> UpdateTenantStatus(
         Guid tenantId,
         [FromBody] UpdateTenantStatusRequest req,

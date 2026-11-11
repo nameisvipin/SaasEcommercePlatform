@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using SaasEcommerce.Core.Entities;
 using SaasEcommerce.Core.Interfaces;
@@ -26,6 +27,7 @@ public sealed class AuthController : ControllerBase
         _tenantContext = tenantContext;
     }
 
+    [EnableRateLimiting("AuthRateLimit")]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest req, CancellationToken ct)
     {
@@ -126,6 +128,52 @@ public sealed class AuthController : ControllerBase
 
         return CreatedAtAction(nameof(GetProfile), new AuthResponse(
             token, 7 * 24 * 3600, "Bearer", buyer.Email, buyer.FullName, buyer.Role.ToString(), buyer.TenantId));
+    }
+
+    public record SuperAdminLoginRequest(string Email, string Password);
+
+    // Dedicated Platform Super-Admin Login (Tenant-Agnostic, No Tenant Header Required)
+    [HttpPost("superadmin/login")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SuperAdminLogin([FromBody] SuperAdminLoginRequest req, CancellationToken ct)
+    {
+        var normalizedEmail = req.Email.Trim().ToLowerInvariant();
+
+        // Super-Admins have TenantId = null; IgnoreQueryFilters bypasses the tenant filter
+        var superAdmin = await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Email == normalizedEmail && 
+                                      u.Role == UserRole.PlatformSuperAdmin && 
+                                      u.TenantId == null, ct);
+
+        if (superAdmin is null || !superAdmin.IsActive)
+        {
+            return Unauthorized(new { error = "Invalid platform super-admin credentials." });
+        }
+
+        bool isPasswordValid = BCrypt.Net.BCrypt.Verify(req.Password, superAdmin.PasswordHash);
+        if (!isPasswordValid)
+        {
+            return Unauthorized(new { error = "Invalid platform super-admin credentials." });
+        }
+
+        var token = _tokenGenerator.GenerateJwtToken(
+            superAdmin.Id,
+            superAdmin.Email,
+            superAdmin.Role.ToString(),
+            tenantId: null,
+            superAdmin.SecurityStampVersion);
+
+        return Ok(new AuthResponse(
+            AccessToken: token,
+            ExpiresInSeconds: 7 * 24 * 3600,
+            TokenType: "Bearer",
+            Email: superAdmin.Email,
+            FullName: superAdmin.FullName,
+            Role: superAdmin.Role.ToString(),
+            TenantId: null
+        ));
     }
 
     // Force-Logout of All Active Devices (FRD 2.1)

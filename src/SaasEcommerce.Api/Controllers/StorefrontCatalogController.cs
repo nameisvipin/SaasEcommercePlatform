@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using SaasEcommerce.Core.Entities;
@@ -25,6 +26,7 @@ public sealed record CatalogFilterQuery(
 
 [ApiController]
 [Route("api/v1/storefront")]
+[EnableRateLimiting("StorefrontRateLimit")]
 public sealed class StorefrontCatalogController : ControllerBase
 {
     private readonly AppDbContext _db;

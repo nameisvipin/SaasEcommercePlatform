@@ -34,11 +34,18 @@ public sealed class TenantResolutionMiddleware
     {
         var path = context.Request.Path.Value ?? string.Empty;
 
-        // 1. Allow Super-Admin & Healthcheck routes to execute in Master Context
-        if (path.StartsWith("/api/v1/superadmin", StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith("/health", StringComparison.OrdinalIgnoreCase))
+        // 1. Allow Super-Admin, Super-Admin Auth & Healthcheck routes to execute in Master Context
+        if (path.StartsWith("/api/v1/auth/superadmin", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/v1/superadmin", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/health", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase))
         {
             tenantContext.SetSuperAdminContext();
+
+            // Set PostgreSQL session variable so RLS allows reading across all tenants
+            await dbContext.Database.ExecuteSqlRawAsync(
+                "SELECT set_config('app.current_tenant', 'SUPERADMIN', true);");
+                
             await _next(context);
             return;
         }
