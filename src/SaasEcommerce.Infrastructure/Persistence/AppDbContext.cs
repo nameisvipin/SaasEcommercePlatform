@@ -37,6 +37,9 @@ public sealed class AppDbContext : DbContext
     public DbSet<Coupon> Coupons => Set<Coupon>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    // Phase 4 Logistics, Shipments & RTO Tables
+    public DbSet<Shipment> Shipments => Set<Shipment>();
+    public DbSet<RtoDisputeClaim> RtoDisputeClaims => Set<RtoDisputeClaim>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -200,6 +203,38 @@ public sealed class AppDbContext : DbContext
             b.Property(x => x.IgstAmount).HasPrecision(12, 2);
             b.Property(x => x.LineTotal).HasPrecision(12, 2);
             b.HasOne(x => x.Order).WithMany(o => o.Items).HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 7e. Shipment Table
+        modelBuilder.Entity<Shipment>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.TenantId, x.AwbNumber }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.OrderId }).IsUnique();
+            b.Property(x => x.AwbNumber).HasMaxLength(60).IsRequired();
+            b.Property(x => x.CourierName).HasMaxLength(100).IsRequired();
+            b.Property(x => x.ChargeableWeightGrams).HasPrecision(10, 2);
+            b.Property(x => x.EstimatedFreightCost).HasPrecision(10, 2);
+            b.Property(x => x.Checkpoints)
+             .HasColumnType("jsonb")
+             .HasDefaultValueSql("'[]'::jsonb");
+
+            b.HasOne(x => x.Order)
+             .WithOne()
+             .HasForeignKey<Shipment>(x => x.OrderId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 7f. RtoDisputeClaim Table
+        modelBuilder.Entity<RtoDisputeClaim>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.TenantId, x.ShipmentId });
+            b.Property(x => x.AwbNumber).HasMaxLength(60).IsRequired();
+            b.Property(x => x.IssueType).HasMaxLength(120).IsRequired();
+            b.Property(x => x.ProofMediaUrls)
+             .HasColumnType("jsonb")
+             .HasDefaultValueSql("'[]'::jsonb");
         });
 
         // 8. Automatically apply Global Query Filter to all ITenantScoped entities

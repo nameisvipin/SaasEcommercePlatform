@@ -14,6 +14,7 @@ using SaasEcommerce.Infrastructure.Storage;
 using SaasEcommerce.Infrastructure.Tenancy;
 using Npgsql;
 using SaasEcommerce.Infrastructure.Invoices;
+using SaasEcommerce.Infrastructure.Logistics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,6 +33,7 @@ builder.Services.AddScoped<RlsConnectionInterceptor>();
 builder.Services.AddSingleton<ITokenGenerator, TokenGenerator>();
 builder.Services.AddSingleton<IMediaStorageService, CloudflareR2StorageService>();
 builder.Services.AddSingleton<IInvoicePdfService, QuestPdfInvoiceService>();
+builder.Services.AddSingleton<ILogisticsService, ShiprocketLogisticsService>();
 
 // 3. Npgsql DataSource with Dynamic JSON Enabled (Npgsql 8.0+)
 var connectionString = builder.Configuration.GetConnectionString("MasterConnection");
